@@ -1,0 +1,28 @@
+version: '3.9'
+
+services:
+  db:
+    container_name: pile-dev-db-test
+    image: postgres:15.1-alpine
+    environment:
+      POSTGRES_PASSWORD: "very secure password"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "bank"
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  pytest:
+    image: pile-dev-be:dev
+    container_name: pile-dev-test
+    command: pytest
+    volumes:
+      - ..:/app/src/
+    depends_on:
+      db:
+        condition: service_healthy

@@ -1,0 +1,58 @@
+version: '3.9'
+
+services:
+  api:
+    ports:
+      - "8000:8000"
+    image: pile-dev-be:dev
+    container_name: pile-dev-be
+    command: /usr/local/bin/python -m src
+    build:
+      target: dev
+      context: ../
+      dockerfile: ./deploy/python/Dockerfile
+    volumes:
+      - ..:/app/src/
+    depends_on:
+      migrations:
+        condition: "service_completed_successfully"
+    environment:
+      # Enables autoreload.
+      PILE_CAPITAL_CHALLENGE_RELOAD: "True"
+
+  db:
+    container_name: pile-dev-db
+    image: postgres:15.1-alpine
+    environment:
+      POSTGRES_PASSWORD: "very secure password"
+      POSTGRES_USER: "postgres"
+      POSTGRES_DB: "bank"
+    volumes:
+      - dev-db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+    healthcheck:
+      test: pg_isready -U postgres
+      interval: 2s
+      timeout: 3s
+      retries: 40
+
+  migrations:
+    restart: "no"
+    command: alembic upgrade head
+    image: pile-dev-be:dev
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ..:/app/src/
+    environment:
+      PILE_CAPITAL_CHALLENGE_DB_HOST: db
+      PILE_CAPITAL_CHALLENGE_DB_PORT: 5432
+      PILE_CAPITAL_CHALLENGE_DB_USER: postgres
+      PILE_CAPITAL_CHALLENGE_DB_PASS: "very secure password"
+      PILE_CAPITAL_CHALLENGE_DB_BASE: bank
+
+volumes:
+  dev-db:
